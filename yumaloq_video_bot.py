@@ -83,7 +83,7 @@ def handle_video(message):
         bot.reply_to(message, "Iltimos, video fayl yuboring. 🎥")
         return
 
-    processing_msg = bot.reply_to(message, "⏳ Video qayta ishlanmoqda, biroz kuting...")
+    processing_msg = bot.reply_to(message, "⏳ Video qayta ishlanmoqda, biroz kuting (30-60 soniya)...")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         kirish_fayl = os.path.join(tmpdir, "kirish.mp4")
@@ -104,13 +104,15 @@ def handle_video(message):
             return
 
         # 2) ffmpeg orqali kvadrat qilib kesish + o'lchamini moslash + davomiylikni cheklash
+        # "ultrafast" preset -- bepul serverning kam protsessor quvvatida ham tez ishlashi uchun
         cmd = [
             "ffmpeg", "-y", "-i", kirish_fayl,
             "-t", str(MAX_DAVOMIYLIK),
             "-vf", f"crop='min(iw,ih)':'min(iw,ih)',scale={VIDEO_OLCHAMI}:{VIDEO_OLCHAMI}",
-            "-c:v", "libx264", "-preset", "fast", "-crf", "23",
-            "-c:a", "aac", "-b:a", "128k",
+            "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
+            "-c:a", "aac", "-b:a", "96k",
             "-movflags", "+faststart",
+            "-threads", "0",
             chiqish_fayl
         ]
 
