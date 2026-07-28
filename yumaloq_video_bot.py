@@ -19,15 +19,38 @@ ISHGA TUSHIRISH:
 import os
 import subprocess
 import tempfile
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 import telebot
 
 # ============ SOZLAMALAR ============
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "SIZNING_BOT_TOKENINGIZ")
 MAX_DAVOMIYLIK = 60  # soniya -- Telegram video xabarlari odatda shu chegarada
 VIDEO_OLCHAMI = 384  # piksel (kengligi = balandligi)
+PORT = int(os.environ.get("PORT", 10000))  # Render "Web Service" uchun port talab qiladi
 # ======================================
 
 bot = telebot.TeleBot(BOT_TOKEN)
+
+
+# ---------- Render uchun soxta HTTP server ----------
+# Render.com bepul "Web Service"lar biror portni tinglashini talab qiladi,
+# aks holda xizmatni "ishlamayapti" deb hisoblaydi. Bu oddiy server shunchaki
+# "Bot ishlayapti" deb javob beradi, botning asosiy ishiga aloqasi yo'q.
+class SalomatlikTekshiruvi(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain')
+        self.end_headers()
+        self.wfile.write(b"Bot ishlayapti!")
+
+    def log_message(self, format, *args):
+        pass  # Konsolni keraksiz yozuvlar bilan to'ldirmaslik uchun
+
+
+def http_serverni_ishga_tushirish():
+    server = HTTPServer(('0.0.0.0', PORT), SalomatlikTekshiruvi)
+    server.serve_forever()
 
 
 @bot.message_handler(commands=['start'])
@@ -122,5 +145,9 @@ def fallback(message):
 
 
 if __name__ == '__main__':
+    # HTTP serverni fon rejimida (alohida oqimda) ishga tushiramiz
+    http_thread = threading.Thread(target=http_serverni_ishga_tushirish, daemon=True)
+    http_thread.start()
+
     print("Bot ishga tushdi...")
     bot.infinity_polling()
