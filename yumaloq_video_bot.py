@@ -83,7 +83,7 @@ def handle_video(message):
         bot.reply_to(message, "Iltimos, video fayl yuboring. 🎥")
         return
 
-    processing_msg = bot.reply_to(message, "⏳ Video qayta ishlanmoqda, biroz kuting (30-60 soniya)...")
+    processing_msg = bot.reply_to(message, "⏳ Video qayta ishlanmoqda, biroz kuting...")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         kirish_fayl = os.path.join(tmpdir, "kirish.mp4")
