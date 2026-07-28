@@ -26,7 +26,7 @@ import telebot
 # ============ SOZLAMALAR ============
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "SIZNING_BOT_TOKENINGIZ")
 MAX_DAVOMIYLIK = 60  # soniya -- Telegram video xabarlari odatda shu chegarada
-VIDEO_OLCHAMI = 384  # piksel (kengligi = balandligi)
+VIDEO_OLCHAMI = 640  # piksel -- Telegramning maksimal ruxsat etgan o'lchami (kichikroq videolar kichraytirilmaydi)
 PORT = int(os.environ.get("PORT", 10000))  # Render "Web Service" uchun port talab qiladi
 # ======================================
 
@@ -83,7 +83,7 @@ def handle_video(message):
         bot.reply_to(message, "Iltimos, video fayl yuboring. 🎥")
         return
 
-    processing_msg = bot.reply_to(message, "⏳ Video qayta ishlanmoqda, biroz kuting...")
+    processing_msg = bot.reply_to(message, "⏳ Video yuqori sifatda qayta ishlanmoqda, biroz kuting...")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         kirish_fayl = os.path.join(tmpdir, "kirish.mp4")
@@ -103,21 +103,26 @@ def handle_video(message):
             )
             return
 
-        # 2) ffmpeg orqali kvadrat qilib kesish + o'lchamini moslash + davomiylikni cheklash
-        # "ultrafast" preset -- bepul serverning kam protsessor quvvatida ham tez ishlashi uchun
+        # 2) ffmpeg orqali kvadrat qilib kesish + o'lchamini moslash (sifatni saqlagan holda)
+        # "slow" preset va past CRF -- vaqt ko'proq ketadi, lekin sifat yuqori bo'ladi.
+        # scale filtri faqat 640px dan katta videolarni kichraytiradi, kichiklarini
+        # asl o'lchamida qoldiradi (sun'iy kichraytirish yo'q).
         cmd = [
             "ffmpeg", "-y", "-i", kirish_fayl,
             "-t", str(MAX_DAVOMIYLIK),
-            "-vf", f"crop='min(iw,ih)':'min(iw,ih)',scale={VIDEO_OLCHAMI}:{VIDEO_OLCHAMI}",
-            "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
-            "-c:a", "aac", "-b:a", "96k",
+            "-vf", (
+                "crop='min(iw,ih)':'min(iw,ih)',"
+                f"scale='min({VIDEO_OLCHAMI},iw)':'min({VIDEO_OLCHAMI},ih)'"
+            ),
+            "-c:v", "libx264", "-preset", "slow", "-crf", "18",
+            "-c:a", "aac", "-b:a", "192k",
             "-movflags", "+faststart",
             "-threads", "0",
             chiqish_fayl
         ]
 
         try:
-            subprocess.run(cmd, check=True, capture_output=True, timeout=120)
+            subprocess.run(cmd, check=True, capture_output=True, timeout=300)
         except subprocess.CalledProcessError as e:
             bot.edit_message_text("❌ Videoni qayta ishlashda xatolik yuz berdi.",
                                    message.chat.id, processing_msg.message_id)
